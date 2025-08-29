@@ -28,6 +28,7 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         buildConfigField("String", "BASE_URL", properties["base.url"].toString())
+        buildConfigField("String", "NAVERMAP_CLIENT_SECRET", properties.getProperty("NAVERMAP_CLIENT_SECRET"))
         buildConfigField("String", "NAVERMAP_CLIENT_ID", properties.getProperty("NAVERMAP_CLIENT_ID"))
         manifestPlaceholders["NAVERMAP_CLIENT_ID"] = properties.getProperty("NAVERMAP_CLIENT_ID")
     }

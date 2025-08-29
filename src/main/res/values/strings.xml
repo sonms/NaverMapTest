@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">NaverMapTest</string>
+    <string name="ic_home_description">home</string>
+    <string name="ic_region_description">region</string>
 </resources>
