@@ -1,4 +1,4 @@
-package com.example.navermaptest.ui.theme
+package com.example.navermaptest.core.designsystem.theme
 
 import androidx.compose.ui.graphics.Color
 
