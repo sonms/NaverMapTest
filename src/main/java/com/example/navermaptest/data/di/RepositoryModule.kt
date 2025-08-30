@@ -1,5 +1,6 @@
 package com.example.navermaptest.data.di
 
+import com.example.navermaptest.data.respositoryimpl.MapRepositoryImpl
 import com.example.navermaptest.domain.repository.StaticMapRepository
 import dagger.Binds
 import dagger.Module
@@ -10,9 +11,9 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class RepositoryModule {
-    /*@Binds
+    @Binds
     @Singleton
     abstract fun bindStaticMapRepository(
-        staticMapRepositoryImpl: StaticMapRepositoryImpl
-    ): StaticMapRepository*/
+        staticMapRepositoryImpl: MapRepositoryImpl
+    ): StaticMapRepository
 }
