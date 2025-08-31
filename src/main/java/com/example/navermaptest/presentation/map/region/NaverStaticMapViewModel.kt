@@ -34,6 +34,32 @@ class NaverStaticMapViewModel @Inject constructor(
                 LatLng(37.4979, 127.0276)
             )
         )
+
+        loadRouteLine(
+            route = listOf(
+                LatLng(37.4979, 127.0276), // 강남역 사거리 중심
+                LatLng(37.4982, 127.0284), // 강남역 11번 출구 쪽
+                LatLng(37.4988, 127.0292), // 테헤란로 방향
+                LatLng(37.4995, 127.0298), // 역삼역 방향 직진
+                LatLng(37.5001, 127.0304), // 테헤란로 초입
+                LatLng(37.5008, 127.0311)  // 더 위쪽 (샘플 종점)
+            )
+        )
+
+        loadArrowRouteLine(
+            route = listOf(
+                LatLng(37.4980, 127.0276), // 출발: 강남역 사거리
+                LatLng(37.4985, 127.0282), // 강남역 11번 출구 방향
+                LatLng(37.4990, 127.0288), // 카페 골목 진입
+                LatLng(37.4993, 127.0295), // 작은 골목길
+                LatLng(37.4989, 127.0300), // 오피스 건물 뒷길
+                LatLng(37.4982, 127.0302), // 골목길 따라 이동
+                LatLng(37.4977, 127.0297), // 다시 역삼역 방향
+                LatLng(37.4975, 127.0289), // 큰길로 복귀
+                LatLng(37.4979, 127.0279), // 강남역 인근 복귀
+                LatLng(37.4980, 127.0276)  // 도착: 출발 지점으로 회귀
+            )
+        )
     }
     /*init {
         loadStaticMap(
@@ -76,6 +102,30 @@ class NaverStaticMapViewModel @Inject constructor(
             _uiState.update {
                 it.copy(
                     regionRouteLineList = route.toPersistentList()
+                )
+            }
+        }
+    }
+
+    fun loadRouteLine(
+        route : List<LatLng>
+    ) {
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    routeLineList = route.toPersistentList()
+                )
+            }
+        }
+    }
+
+    fun loadArrowRouteLine(
+        route : List<LatLng>
+    ) {
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    arrowRouteLineList = route.toPersistentList()
                 )
             }
         }
