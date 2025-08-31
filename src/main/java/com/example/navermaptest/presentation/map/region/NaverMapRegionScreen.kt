@@ -33,6 +33,7 @@ import com.naver.maps.geometry.LatLng
 import com.naver.maps.geometry.LatLngBounds
 import com.naver.maps.map.CameraUpdate
 import com.naver.maps.map.NaverMap
+import com.naver.maps.map.compose.ArrowheadPathOverlay
 import com.naver.maps.map.compose.CameraPositionState
 import com.naver.maps.map.compose.DisposableMapEffect
 import com.naver.maps.map.compose.ExperimentalNaverMapApi
@@ -69,6 +70,8 @@ fun NaverMapRegionRoute(
             cameraPositionState = cameraPositionState,
             context = context,
             routeCoords = uiState.regionRouteLineList,
+            arrowRouteLineCoords = uiState.arrowRouteLineList,
+            routeLineCoords = uiState.routeLineList,
             snapshotUri = uiState.snapshotUri,
             onSnapshotTaken = { uri ->
                 viewModel.snapshotUri(uri)
@@ -85,6 +88,8 @@ fun NaverMapRegionScreen(
     context: Context,
     snapshotUri: Uri?,
     routeCoords: ImmutableList<LatLng>,
+    routeLineCoords: ImmutableList<LatLng>,
+    arrowRouteLineCoords : ImmutableList<LatLng>,
     onSnapshotTaken: (Uri) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -95,7 +100,7 @@ fun NaverMapRegionScreen(
         mutableStateOf(
             MapUiSettings(
                 isLocationButtonEnabled = true,
-                isZoomControlEnabled = false,
+                isZoomControlEnabled = true,
                 logoGravity = Gravity.TOP or Gravity.END,
             )
         )
@@ -154,19 +159,33 @@ fun NaverMapRegionScreen(
                     }
                 }
 
-                PathOverlay(
+                /*PathOverlay(
                     coords = routeCoords,
                     width = 5.dp,         // 선의 두께
                     color = Color.Green,   // 선의 색상
                     outlineWidth = 1.dp,  // 선의 테두리 두께
                     outlineColor = Color.White // 선의 테두리 색상
-                )
+                )*/
 
                 // 내부 영역을 색칠하는 PolygonOverlay
                 PolygonOverlay(
                     coords = routeCoords,
                     color = Color.Blue.copy(alpha = 0.3f), // 채우기 색상 (반투명 파랑)
-                    outlineWidth = 0.dp // 폴리곤의 외곽선은 경로가 이미 있으므로 0으로 설정
+                    outlineWidth = 1.dp, // 폴리곤의 외곽선은 경로가 이미 있으므로 0으로 설정
+                    outlineColor = Color.Blue // 폴리곤의 외곽선 색상
+                )
+
+                // 화살표 그려진 루트 라인
+                ArrowheadPathOverlay(
+                    coords = arrowRouteLineCoords,
+                    color = Color.Green
+                )
+
+                // 일반 루트 라인
+                PathOverlay(
+                    coords = routeLineCoords,
+                    width = 5.dp,         // 선의 두께
+                    color = Color.Green,   // 선의 색상
                 )
             }
 
