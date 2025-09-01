@@ -1,9 +1,12 @@
 package com.example.navermaptest.presentation.map.region
 
+import android.Manifest
 import android.content.Context
 import android.net.Uri
 import android.util.Log
 import android.view.Gravity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -28,7 +31,10 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import com.example.navermaptest.R
 import com.example.navermaptest.core.util.saveBitmapToCache
+import com.example.navermaptest.presentation.map.util.FusedLocationSource
+import com.example.navermaptest.presentation.map.util.rememberFusedLocationSource
 import com.naver.maps.geometry.LatLng
 import com.naver.maps.geometry.LatLngBounds
 import com.naver.maps.map.CameraUpdate
@@ -37,13 +43,18 @@ import com.naver.maps.map.compose.ArrowheadPathOverlay
 import com.naver.maps.map.compose.CameraPositionState
 import com.naver.maps.map.compose.DisposableMapEffect
 import com.naver.maps.map.compose.ExperimentalNaverMapApi
+import com.naver.maps.map.compose.LocationOverlay
+import com.naver.maps.map.compose.LocationOverlayDefaults
+import com.naver.maps.map.compose.LocationTrackingMode
 import com.naver.maps.map.compose.MapProperties
 import com.naver.maps.map.compose.MapUiSettings
 import com.naver.maps.map.compose.NaverMap
 import com.naver.maps.map.compose.PathOverlay
 import com.naver.maps.map.compose.PolygonOverlay
 import com.naver.maps.map.compose.rememberCameraPositionState
+import com.naver.maps.map.overlay.OverlayImage
 import kotlinx.collections.immutable.ImmutableList
+import java.util.Locale
 
 @OptIn(ExperimentalNaverMapApi::class)
 @Composable
@@ -55,28 +66,76 @@ fun NaverMapRegionRoute(
     val cameraPositionState = rememberCameraPositionState()
     val context = LocalContext.current
 
-    LaunchedEffect(uiState.regionRouteLineList) {
+    var hasLocationPermission by remember { mutableStateOf(false) }
+    //val locationSource2 = com.naver.maps.map.compose.rememberFusedLocationSource()
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions(),
+        onResult = { permissions ->
+            hasLocationPermission = permissions.values.all { it }
+        }
+    )
+
+    val locationSource = rememberFusedLocationSource(
+        useTestPoints = true,
+        cameraPositionState = cameraPositionState,
+        hasLocationPermission = hasLocationPermission
+    )
+
+    /*LaunchedEffect(uiState.regionRouteLineList) {
         val bounds = LatLngBounds.from(uiState.regionRouteLineList)
         cameraPositionState.move(
             CameraUpdate.fitBounds(bounds, 150)
         )
+    }*/
+    LaunchedEffect(Unit) {
+        permissionLauncher.launch(
+            arrayOf(
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            )
+        )
+        locationSource.setRealTimeLocationListener(viewModel)
+    }
+
+    LaunchedEffect(uiState.realTimeRouteLine.size) {
+        // 경로 점이 2개 이상 있어야 영역을 계산할 수 있습니다.
+        if (uiState.realTimeRouteLine.size >= 2) {
+            val bounds = LatLngBounds.from(uiState.realTimeRouteLine)
+            cameraPositionState.move(
+                CameraUpdate.fitBounds(bounds, 150)
+            )
+        }
     }
 
     when {
         uiState.isLoading -> CircularProgressIndicator()
         uiState.error != null -> Text(text = uiState.error.toString())
-        else -> NaverMapRegionScreen(
-            paddingValues = paddingValues,
-            cameraPositionState = cameraPositionState,
-            context = context,
-            routeCoords = uiState.regionRouteLineList,
-            arrowRouteLineCoords = uiState.arrowRouteLineList,
-            routeLineCoords = uiState.routeLineList,
-            snapshotUri = uiState.snapshotUri,
-            onSnapshotTaken = { uri ->
-                viewModel.snapshotUri(uri)
+        else -> if (hasLocationPermission) {
+            NaverMapRegionScreen(
+                paddingValues = paddingValues,
+                cameraPositionState = cameraPositionState,
+                locationSource = locationSource,
+                context = context,
+                routeCoords = uiState.regionRouteLineList,
+                arrowRouteLineCoords = uiState.arrowRouteLineList,
+                routeLineCoords = uiState.realTimeRouteLine,
+                snapshotUri = uiState.snapshotUri,
+                onSnapshotTaken = { uri ->
+                    viewModel.snapshotUri(uri)
+                }
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "권한이 거부 되었습니다."
+                )
             }
-        )
+        }
     }
 }
 
@@ -85,6 +144,7 @@ fun NaverMapRegionRoute(
 fun NaverMapRegionScreen(
     paddingValues: PaddingValues,
     cameraPositionState: CameraPositionState,
+    locationSource: FusedLocationSource,
     context: Context,
     snapshotUri: Uri?,
     routeCoords: ImmutableList<LatLng>,
@@ -102,6 +162,7 @@ fun NaverMapRegionScreen(
                 isLocationButtonEnabled = true,
                 isZoomControlEnabled = true,
                 logoGravity = Gravity.TOP or Gravity.END,
+                isLogoClickEnabled = true
             )
         )
     }
@@ -113,7 +174,8 @@ fun NaverMapRegionScreen(
                 minZoom = 5.0,
                 isBicycleLayerGroupEnabled = true, // 자전거 도로 그룹
                 isCadastralLayerGroupEnabled = true, // 지적편집도 레이어 그룹
-                isIndoorEnabled = true // 실내 지형
+                isIndoorEnabled = true, // 실내 지형
+                locationTrackingMode = LocationTrackingMode.Follow
             )
         )
     }
@@ -133,8 +195,15 @@ fun NaverMapRegionScreen(
                     .fillMaxSize()
                     .aspectRatio(1f),
                 cameraPositionState = cameraPositionState,
-                uiSettings = mapUiSettings
+                locationSource = locationSource,
+                locale = Locale.KOREA,
+                uiSettings = mapUiSettings,
+                properties = mapProperties,
             ) {
+                LocationOverlay(
+                    position = cameraPositionState.position.target,
+                    icon = OverlayImage.fromResource(R.drawable.ic_location_on_24),
+                )
                 /*
                 * @Composable
                 @NaverMapComposable
@@ -182,11 +251,13 @@ fun NaverMapRegionScreen(
                 )
 
                 // 일반 루트 라인
-                PathOverlay(
-                    coords = routeLineCoords,
-                    width = 5.dp,         // 선의 두께
-                    color = Color.Green,   // 선의 색상
-                )
+                if (routeLineCoords.isNotEmpty() && routeLineCoords.size >= 2) {
+                    PathOverlay(
+                        coords = routeLineCoords,
+                        width = 5.dp,         // 선의 두께
+                        color = Color.Green,   // 선의 색상
+                    )
+                }
             }
 
             Button(

@@ -1,9 +1,11 @@
 package com.example.navermaptest.presentation.map.region
 
+import android.location.Location
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.navermaptest.domain.usecase.GetStaticMapBitmapUseCase
+import com.example.navermaptest.presentation.map.util.RealTimeLocationListener
 import com.naver.maps.geometry.LatLng
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.collections.immutable.toPersistentList
@@ -16,9 +18,12 @@ import javax.inject.Inject
 @HiltViewModel
 class NaverStaticMapViewModel @Inject constructor(
     private val getStaticMapBitmapUseCase: GetStaticMapBitmapUseCase
-) : ViewModel() {
+) : ViewModel(), RealTimeLocationListener {
     private val _uiState = MutableStateFlow(MapUiState())
     val uiState = _uiState.asStateFlow()
+
+    // 마지막으로 경로에 추가된 위치를 저장할 변수
+    private var lastAddedLocation: Location? = null
 
     init {
         loadRegionRoute(
@@ -138,6 +143,40 @@ class NaverStaticMapViewModel @Inject constructor(
                     snapshotUri = uri
                 )
             }
+        }
+    }
+
+    override fun onLocationChanged(location: Location) {
+        val newLatLng = LatLng(location.latitude, location.longitude)
+
+        // currentLocation은 GPS 신호가 올 때마다 항상 업데이트
+        _uiState.update { it.copy(currentLocation = newLatLng) }
+
+        // 마지막 위치가 없으면(최초 실행 시) 바로 추가
+        if (lastAddedLocation == null) {
+            addNewRoutePoint(newLatLng, location)
+            return
+        }
+
+        // 마지막 위치로부터의 거리를 미터(m) 단위로 계산
+        val distance = lastAddedLocation!!.distanceTo(location)
+
+        // 거리가 3미터 이상일 경우에만 경로에 점을 추가
+        if (distance >= 3.0f) {
+            addNewRoutePoint(newLatLng, location)
+        }
+    }
+
+    private fun addNewRoutePoint(latLng: LatLng, location: Location) {
+        viewModelScope.launch {
+            _uiState.update { currentState ->
+                val updatedList = currentState.realTimeRouteLine.add(latLng)
+
+                currentState.copy(
+                    realTimeRouteLine = updatedList
+                )
+            }
+            lastAddedLocation = location
         }
     }
 
