@@ -2,6 +2,7 @@ package com.example.navermaptest.presentation.map.region
 
 import android.Manifest
 import android.content.Context
+import android.graphics.Bitmap
 import android.net.Uri
 import android.util.Log
 import android.view.Gravity
@@ -55,6 +56,7 @@ import com.naver.maps.map.compose.rememberCameraPositionState
 import com.naver.maps.map.overlay.OverlayImage
 import kotlinx.collections.immutable.ImmutableList
 import java.util.Locale
+import androidx.core.graphics.scale
 
 @OptIn(ExperimentalNaverMapApi::class)
 @Composable
@@ -263,7 +265,8 @@ fun NaverMapRegionScreen(
             Button(
                 onClick = {
                     rawNaverMap?.takeSnapshot { bitmap ->
-                        val result = saveBitmapToCache(context, bitmap)
+                        val resizedBitmap = crop16to11Center(bitmap)
+                        val result = saveBitmapToCache(context, resizedBitmap)
                         result.onSuccess { uri ->
                             onSnapshotTaken(uri)
                         }.onFailure { exception ->
@@ -292,4 +295,36 @@ fun NaverMapRegionScreen(
             )
         }
     }
+}
+
+fun cropCenterBitmap(src: Bitmap, w: Int, h: Int): Bitmap {
+    val x = (src.width - w) / 2
+    val y = (src.height - h) / 2
+    return Bitmap.createBitmap(src, x, y, w, h)
+}
+
+fun resizeBitmapByRatio(source: Bitmap, ratio: Float): Bitmap {
+    val width = source.width
+    val height = (width / ratio).toInt()
+    return source.scale(width, height)
+}
+
+fun crop16to11Center(bitmap: Bitmap): Bitmap {
+    val targetRatio = 16f / 11f
+    val w = bitmap.width
+    val h = bitmap.height
+    var cropW = w
+    var cropH = h
+    if (w.toFloat() / h > targetRatio) {
+        // 가로가 더 크면 양쪽 잘라야 함
+        cropW = (h * targetRatio).toInt()
+        cropH = h
+    } else {
+        // 세로가 더 크면 위아래 잘라야 함
+        cropW = w
+        cropH = (w / targetRatio).toInt()
+    }
+    val startX = (w - cropW) / 2
+    val startY = (h - cropH) / 2
+    return Bitmap.createBitmap(bitmap, startX, startY, cropW, cropH)
 }
