@@ -1,12 +1,17 @@
 package com.example.navermaptest.presentation.map.region
 
+import android.content.Context
 import android.location.Location
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.navermaptest.core.util.saveBitmapToCache
 import com.example.navermaptest.domain.usecase.GetStaticMapBitmapUseCase
 import com.example.navermaptest.presentation.map.util.RealTimeLocationListener
+import com.example.navermaptest.presentation.map.util.captureAndCropMap
+import com.example.navermaptest.presentation.map.util.findSurfaceView
 import com.naver.maps.geometry.LatLng
+import com.naver.maps.map.MapView
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.collections.immutable.toPersistentList
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -142,6 +147,32 @@ class NaverStaticMapViewModel @Inject constructor(
                 it.copy(
                     snapshotUri = uri
                 )
+            }
+        }
+    }
+
+    fun captureAndSaveMapSnapshot(context : Context, mapView: MapView) {
+        // 1. MapView에서 GLSurfaceView를 찾습니다.
+        val surfaceView = findSurfaceView(mapView)
+        if (surfaceView == null) {
+            _uiState.update { it.copy(error = "스냅샷을 찍을 수 없습니다.") }
+            return
+        }
+
+        // 2. 유틸리티 함수를 호출해 스냅샷을 찍고 잘라냅니다.
+        // 원하는 디자인의 가로/세로 비율을 여기에 지정합니다 (예: 16f / 9f)
+        val desiredAspectRatio = 4f / 3f
+        captureAndCropMap(surfaceView, desiredAspectRatio) { croppedBitmap ->
+            if (croppedBitmap == null) {
+                _uiState.update { it.copy(error = "스냅샷 생성에 실패했습니다.") }
+                return@captureAndCropMap
+            }
+
+            // 3. 결과 Bitmap을 파일로 저장하고 Uri를 UiState에 업데이트합니다.
+            saveBitmapToCache(context, croppedBitmap).onSuccess { uri ->
+                _uiState.update { it.copy(snapshotUri = uri, error = null) }
+            }.onFailure { exception ->
+                _uiState.update { it.copy(error = "스냅샷 저장에 실패했습니다: ${exception.message}") }
             }
         }
     }
