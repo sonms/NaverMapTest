@@ -83,5 +83,5 @@ dependencies {
 
     // 네이버
     implementation(libs.bundles.naverMaps)
-
+    implementation(libs.play.services.location)
 }
